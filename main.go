@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/gliderlabs/ssh"
 	"github.com/google/uuid"
+
+	ui "github.com/gizak/termui/v3"
 )
 
 type LocationCategory int
@@ -57,7 +57,7 @@ var (
 
 func loadUser(s ssh.Session) (*User, bool) {
 
-	fmt.Println(fmt.Sprintf("Users: %d", len(Users)))
+	writeSystemString(fmt.Sprintf("Users: %d", len(Users)))
 
 	for k, v := range Users {
 		if ssh.KeysEqual(k, s.PublicKey()) {
@@ -109,35 +109,6 @@ func WriteUserInfo(s ssh.Session, user *User) {
 	}
 }
 
-func game() {
-
-	defer os.Exit(0)
-
-	i := 0
-	previous := 0
-
-	for atomic.LoadInt64(&kill) != 1 {
-		now := int(time.Now().UTC().UnixMilli())
-
-		// ms since last update
-		deltatime := now - previous
-		previous = now
-
-		// delta value
-		delta := float64(100) / float64(deltatime)
-
-		fmt.Println(fmt.Printf("loop %d delta ms %d fr %f\n", i, deltatime, delta))
-
-		i++
-		time.Sleep(1 * time.Second / 10)
-		if i%17 == 0 {
-			// TODO broadcast to connected users for testing purposes
-		}
-	}
-
-	fmt.Printf("Kill detected. Stopping the game\n\n")
-}
-
 func main() {
 
 	// initialise variables and state
@@ -154,10 +125,10 @@ func main() {
 		if !exists {
 			user = createUser(s)
 			// TODO save user to file or database
-			fmt.Printf("New user '%s' connected!\n", user.username)
+			writeUsersString(fmt.Sprintf("New user '%s' connected!", user.username))
 		} else {
 			// TODO load user from file or database
-			fmt.Printf("User '%s' connected. Welcome back!\n", user.username)
+			writeUsersString(fmt.Sprintf("User '%s' connected. Welcome back!\n", user.username))
 		}
 
 		WriteUserInfo(s, user)
@@ -231,7 +202,7 @@ func main() {
 		}
 
 		io.WriteString(s, "Disconnecting you\n")
-		fmt.Printf("User '%s' disconnected. Goodbye!\n", user.username)
+		writeUsersString(fmt.Sprintf("User '%s' disconnected. Goodbye!", user.username))
 		s.Close()
 	})
 
@@ -240,7 +211,11 @@ func main() {
 		return false
 	})
 
+	initUi()
+	defer ui.Close()
 	go game()
+	go inputUi()
+	go renderUI()
 
 	passwordOption := ssh.PasswordAuth(passwordHandler)
 
@@ -249,6 +224,6 @@ func main() {
 		return true
 	})
 
-	log.Println("Starting server...")
+	writeSystemString("Starting server...")
 	log.Fatal(ssh.ListenAndServe(":2223", nil, passwordOption, publicKeyOption, ssh.HostKeyFile("/Users/jake/.ssh/oissh")))
 }
