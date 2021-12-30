@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"sync/atomic"
 	"time"
@@ -10,6 +11,7 @@ import (
 )
 
 var (
+	EnableUi bool
 	messages *widgets.Paragraph
 	system   *widgets.Paragraph
 	users    *widgets.Paragraph
@@ -40,17 +42,32 @@ func initUi() {
 
 func writeUsersString(message string) {
 
-	users.Text = message
+	if EnableUi {
+		users.Text = message
+	} else {
+		fmt.Println(message)
+	}
+
 }
 
 func writeSystemString(message string) {
 
-	system.Text = message
+	if EnableUi {
+		system.Text = message
+	} else {
+		fmt.Println(message)
+	}
+
 }
 
 func writeMessageString(message string) {
 
-	messages.Text = message
+	if EnableUi {
+		messages.Text = message
+	} else {
+		fmt.Println(message)
+	}
+
 }
 
 func renderUI() {

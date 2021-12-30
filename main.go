@@ -152,17 +152,25 @@ func main() {
 		for connected {
 
 			// not very useful for non-interactive input
-			data := make([]byte, 1)
+			data := make([]byte, 1000)
 			s.Read(data)
 
 			if data[0] != 0 {
+
+				dataStr := strings.TrimSuffix(strings.SplitAfter(string(data), "\n")[0], "\n")
+				fmt.Println(dataStr)
 
 				// write back what the user inputted so the session is interactive
 				s.Write(data)
 				input := data[0]
 
 				// if user presses enter, process the input and clear the input buffer
-				if input == 13 && len(inputBuffer) > 0 {
+				if len(dataStr) > 1 {
+					if dataStr == "shutdown" {
+						connected = false
+						defer atomic.StoreInt64(&kill, 1)
+					}
+				} else if input == 13 && len(inputBuffer) > 0 {
 
 					if inputBuffer == "disconnect" {
 						connected = false
@@ -211,11 +219,17 @@ func main() {
 		return false
 	})
 
-	initUi()
-	defer ui.Close()
+	EnableUi = false
+	if EnableUi {
+		initUi()
+		defer ui.Close()
+
+		go inputUi()
+		go renderUI()
+	} else {
+		// TODO another way to handle the Ctrl+C interrupt
+	}
 	go game()
-	go inputUi()
-	go renderUI()
 
 	passwordOption := ssh.PasswordAuth(passwordHandler)
 
